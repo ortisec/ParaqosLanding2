@@ -1,0 +1,41 @@
+# Dependencias
+node_modules/
+
+# Builds
+build/
+dist/
+
+# Registros
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Cachés
+.eslintcache
+.vite
+
+# Cobertura de pruebas
+coverage/
+
+# Entornos (no subir secretos)
+.env
+.env.*
+
+# Editores/IDE
+.vscode/
+.idea/
+
+# SO/temporales
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Yarn PnP
+.pnp
+.pnp.*
+
+# Paquetes generados por npm pack
+*.tgz
