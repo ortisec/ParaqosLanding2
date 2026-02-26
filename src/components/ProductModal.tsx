@@ -10,23 +10,21 @@ interface ProductModalProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
-  onAddToCart: (product: Product, color: string, size: string) => void;
+  onAddToCart: (product: Product, size: string) => void;
 }
 
 export function ProductModal({ product, open, onClose, onAddToCart }: ProductModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
 
   if (!product) return null;
 
   const handleAddToCart = () => {
-    if (!selectedColor || !selectedSize) {
-      alert('Por favor selecciona un color y una talla');
+    if (!selectedSize) {
+      alert('Por favor selecciona una talla');
       return;
     }
-    onAddToCart(product, selectedColor, selectedSize);
-    setSelectedColor('');
+    onAddToCart(product, selectedSize);
     setSelectedSize('');
     setCurrentImageIndex(0);
     onClose();
@@ -48,7 +46,6 @@ export function ProductModal({ product, open, onClose, onAddToCart }: ProductMod
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="pb-4">
-          <DialogTitle className="text-lg sm:text-xl md:text-2xl tracking-wide pr-8">{product.name}</DialogTitle>
           <DialogDescription className="sr-only">Detalles del producto y opciones de compra</DialogDescription>
         </DialogHeader>
         
@@ -111,6 +108,8 @@ export function ProductModal({ product, open, onClose, onAddToCart }: ProductMod
                 </Badge>
               )}
             </div>
+
+            <h2 className="text-lg sm:text-xl md:text-2xl tracking-wide pr-8">{product.name}</h2>
             
             <div>
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -125,25 +124,7 @@ export function ProductModal({ product, open, onClose, onAddToCart }: ProductMod
             
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{product.description}</p>
             
-            {/* Color Selection */}
-            <div>
-              <label className="block mb-2 sm:mb-3 text-sm tracking-wide">COLOR</label>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 border transition text-sm sm:text-base ${
-                      selectedColor === color
-                        ? 'border-black bg-black text-white'
-                        : 'border-gray-300 hover:border-black'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Color selection removed */}
             
             {/* Size Selection */}
             <div>
