@@ -1,6 +1,8 @@
 import { Product } from '../types/product';
 import openapi from './openapi.json';
 
+const DEFAULT_STOCK_PER_SIZE = 20;
+
 export const products: Product[] = [
   // POLOS
   {
@@ -307,6 +309,12 @@ export const products: Product[] = [
   }
 ];
 
+for (const product of products) {
+  if (!product.stockBySize || Object.keys(product.stockBySize).length === 0) {
+    product.stockBySize = Object.fromEntries(product.sizes.map((size) => [size, DEFAULT_STOCK_PER_SIZE]));
+  }
+}
+
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'https://factubot-texttiles-leon-api.p6eoke.easypanel.host';
 const CACHE_KEY = 'products_cache_v1';
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -349,19 +357,30 @@ function findListEndpoint(tag: string): string | null {
 }
 
 type ApiProducto = { nombre: string; descripcion?: string | null; precio: string; precio_oferta?: string | null; es_oferta?: boolean | null; estado?: boolean | null; marca_id: number; id_producto: number; };
-type ApiVariante = { producto_id: number; color: string[]; talla: string[]; imagen: string[]; id_variante: number; };
+type ApiVariante = {
+  producto_id: number;
+  stock?: number | null;
+  color: string[];
+  talla: string[];
+  imagen: string[];
+  id_variante: number;
+};
 
 function transform(productsApi: ApiProducto[], variantesApi: ApiVariante[]): Product[] {
-  const byProduct: Record<number, { colors: string[]; sizes: string[]; images: string[] }> = {};
+  const byProduct: Record<number, { colors: string[]; sizes: string[]; images: string[]; stockBySize: Record<string, number> }> = {};
   for (const v of variantesApi || []) {
-    const agg = byProduct[v.producto_id] || { colors: [], sizes: [], images: [] };
+    const agg = byProduct[v.producto_id] || { colors: [], sizes: [], images: [], stockBySize: {} };
     for (const c of v.color || []) if (!agg.colors.includes(c)) agg.colors.push(c);
     for (const s of v.talla || []) if (!agg.sizes.includes(s)) agg.sizes.push(s);
     for (const i of v.imagen || []) if (!agg.images.includes(i)) agg.images.push(i);
+    const variantStock = Math.max(0, Number(v.stock ?? 0));
+    for (const s of v.talla || []) {
+      agg.stockBySize[s] = (agg.stockBySize[s] || 0) + variantStock;
+    }
     byProduct[v.producto_id] = agg;
   }
   return (productsApi || []).map((p) => {
-    const agg = byProduct[p.id_producto] || { colors: [], sizes: [], images: [] };
+    const agg = byProduct[p.id_producto] || { colors: [], sizes: [], images: [], stockBySize: {} };
     const base = parseFloat(p.precio || '0') || 0;
     const offer = p.es_oferta ? parseFloat(p.precio_oferta || '0') || base : undefined;
     const isOnSale = !!p.es_oferta && offer !== undefined;
@@ -370,6 +389,10 @@ function transform(productsApi: ApiProducto[], variantesApi: ApiVariante[]): Pro
     const images = agg.images.length ? agg.images : ['https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800'];
     const colors = agg.colors.length ? agg.colors : ['Negro'];
     const sizes = agg.sizes.length ? agg.sizes : ['M'];
+    const stockBySize = sizes.reduce<Record<string, number>>((map, size) => {
+      map[size] = agg.stockBySize[size] ?? DEFAULT_STOCK_PER_SIZE;
+      return map;
+    }, {});
     return {
       id: String(p.id_producto),
       name: p.nombre,
@@ -379,6 +402,7 @@ function transform(productsApi: ApiProducto[], variantesApi: ApiVariante[]): Pro
       images,
       colors,
       sizes,
+      stockBySize,
       isNew: false,
       isOnSale,
       description: p.descripcion || ''

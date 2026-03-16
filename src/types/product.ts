@@ -7,6 +7,7 @@ export interface Product {
   images: string[];
   colors: string[];
   sizes: string[];
+  stockBySize?: Record<string, number>;
   isNew?: boolean;
   isOnSale?: boolean;
   description: string;
@@ -14,7 +15,6 @@ export interface Product {
 
 export interface CartItem {
   product: Product;
-  selectedColor: string;
   selectedSize: string;
   quantity: number;
 }

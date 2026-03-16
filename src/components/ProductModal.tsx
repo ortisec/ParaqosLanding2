@@ -1,21 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Product } from '../types/product';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
+import { getStockForSize } from '../utils/stock';
 
 interface ProductModalProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
-  onAddToCart: (product: Product, size: string) => void;
+  onAddToCart: (product: Product, size: string, quantity: number) => void;
 }
 
 export function ProductModal({ product, open, onClose, onAddToCart }: ProductModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
+  const [quantity, setQuantity] = useState(1);
+
+  const selectedSizeStock = useMemo(() => {
+    if (!product) return 0;
+    return getStockForSize(product, selectedSize);
+  }, [product, selectedSize]);
+  const canIncreaseQuantity = selectedSize !== '' && quantity < selectedSizeStock;
+  const isOutOfStockForSize = selectedSize !== '' && selectedSizeStock <= 0;
+
+  useEffect(() => {
+    if (open) {
+      setCurrentImageIndex(0);
+      setSelectedSize('');
+      setQuantity(1);
+    }
+  }, [product?.id, open]);
+
+  useEffect(() => {
+    if (!selectedSize) {
+      setQuantity(1);
+      return;
+    }
+    if (selectedSizeStock <= 0) {
+      setQuantity(0);
+      return;
+    }
+    setQuantity((prev) => Math.max(1, Math.min(prev || 1, selectedSizeStock)));
+  }, [selectedSize, selectedSizeStock]);
 
   if (!product) return null;
 
@@ -24,8 +53,14 @@ export function ProductModal({ product, open, onClose, onAddToCart }: ProductMod
       alert('Por favor selecciona una talla');
       return;
     }
-    onAddToCart(product, selectedSize);
+    if (selectedSizeStock <= 0 || quantity <= 0) {
+      alert('Esta talla no tiene stock disponible');
+      return;
+    }
+
+    onAddToCart(product, selectedSize, quantity);
     setSelectedSize('');
+    setQuantity(1);
     setCurrentImageIndex(0);
     onClose();
   };
@@ -130,25 +165,63 @@ export function ProductModal({ product, open, onClose, onAddToCart }: ProductMod
             <div>
               <label className="block mb-2 sm:mb-3 text-sm tracking-wide">TALLA</label>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
+                {product.sizes.map((size) => {
+                  const sizeStock = getStockForSize(product, size);
+                  const isDisabled = sizeStock <= 0;
+                  return (
                   <button
                     key={size}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() => {
+                      if (isDisabled) return;
+                      setSelectedSize(size);
+                    }}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 border transition text-sm sm:text-base min-w-[2.5rem] ${
                       selectedSize === size
                         ? 'border-black bg-black text-white'
+                        : isDisabled
+                        ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : 'border-gray-300 hover:border-black'
                     }`}
+                    disabled={isDisabled}
                   >
                     {size}
                   </button>
-                ))}
+                  );
+                })}
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm tracking-wide">CANTIDAD</label>
+              {!selectedSize ? (
+                <p className="text-sm text-gray-500">Selecciona una talla para continuar.</p>
+              ) : (
+                <div className="flex items-center gap-2 border border-gray-300 w-fit">
+                  <button
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    className={`p-2 transition ${quantity > 1 ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+                    aria-label="Disminuir cantidad"
+                    disabled={quantity <= 1 || selectedSizeStock <= 0}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="min-w-[2rem] text-center text-sm sm:text-base">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity((prev) => Math.min(selectedSizeStock, prev + 1))}
+                    className={`p-2 transition ${canIncreaseQuantity ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'}`}
+                    aria-label="Aumentar cantidad"
+                    disabled={!canIncreaseQuantity}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
             
             <Button
               onClick={handleAddToCart}
               className="w-full bg-black text-white hover:bg-gray-800 h-11 sm:h-12 text-sm sm:text-base mt-6"
+              disabled={!selectedSize || isOutOfStockForSize || quantity <= 0}
             >
               AGREGAR AL CARRITO
             </Button>

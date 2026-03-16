@@ -7,6 +7,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { Button } from './components/ui/button';
 import { products } from './data/products';
 import { Product, CartItem } from './types/product';
+import { clampQuantity, getMaxAllowedForCartLine, getQuantityInCartForVariant, getStockForSize } from './utils/stock';
 
 export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -48,8 +49,27 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [displayedProducts, filteredProducts.length]);
 
-  const handleAddToCart = (product: Product, color: string, size: string) => {
-    setCartItems((prev) => [...prev, { product, selectedColor: color, selectedSize: size, quantity: 1 }]);
+  const handleAddToCart = (product: Product, size: string, quantity: number) => {
+    setCartItems((prev) => {
+      const variantStock = getStockForSize(product, size);
+      const quantityAlreadyInCart = getQuantityInCartForVariant(prev, product.id, size);
+      const remaining = Math.max(0, variantStock - quantityAlreadyInCart);
+      if (remaining === 0) return prev;
+
+      const quantityToAdd = Math.min(quantity, remaining);
+      const existingIndex = prev.findIndex((item) => item.product.id === product.id && item.selectedSize === size);
+
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + quantityToAdd,
+        };
+        return updated;
+      }
+
+      return [...prev, { product, selectedSize: size, quantity: quantityToAdd }];
+    });
   };
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
@@ -58,8 +78,17 @@ export default function App() {
       return;
     }
     setCartItems((prev) => {
+      const targetItem = prev[index];
+      if (!targetItem) return prev;
+
+      const maxAllowed = getMaxAllowedForCartLine(prev, targetItem, index);
+      if (maxAllowed <= 0) {
+        return prev.filter((_, i) => i !== index);
+      }
+
+      const clampedQuantity = clampQuantity(quantity, maxAllowed);
       const newItems = [...prev];
-      newItems[index].quantity = quantity;
+      newItems[index].quantity = clampedQuantity;
       return newItems;
     });
   };
@@ -73,7 +102,6 @@ export default function App() {
       `Hola! Me gustaría realizar el siguiente pedido:\n\n` +
       cartItems.map((item, i) => 
         `${i + 1}. ${item.product.name}\n` +
-        `   Color: ${item.selectedColor}\n` +
         `   Talla: ${item.selectedSize}\n` +
         `   Cantidad: ${item.quantity}\n` +
         `   Precio: S/ ${(item.product.price * item.quantity).toFixed(2)}\n`

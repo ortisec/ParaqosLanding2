@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Minus, Plus, Trash2 } from 'lucide-react';
+import { getMaxAllowedForCartLine } from '../utils/stock';
 
 interface CartDrawerProps {
   open: boolean;
@@ -42,7 +43,10 @@ export function CartDrawer({
             {/* Cart Items - Scrollable area */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
               <div className="space-y-6">
-                {cartItems.map((item, index) => (
+                {cartItems.map((item, index) => {
+                  const maxAllowed = getMaxAllowedForCartLine(cartItems, item, index);
+                  const canIncrease = item.quantity < maxAllowed;
+                  return (
                   <div key={index} className="flex gap-4 pb-6 border-b border-gray-200 last:border-0">
                     <div className="w-20 h-28 sm:w-24 sm:h-32 flex-shrink-0 bg-gray-100 overflow-hidden">
                       <ImageWithFallback
@@ -65,8 +69,6 @@ export function CartDrawer({
                       </div>
                       
                       <p className="text-xs sm:text-sm text-gray-600">
-                        <span className="block sm:inline">Color: {item.selectedColor}</span>
-                        <span className="hidden sm:inline"> | </span>
                         <span className="block sm:inline">Talla: {item.selectedSize}</span>
                       </p>
                       
@@ -84,8 +86,11 @@ export function CartDrawer({
                           <span className="min-w-[2rem] text-center text-sm sm:text-base">{item.quantity}</span>
                           <button
                             onClick={() => onUpdateQuantity(index, item.quantity + 1)}
-                            className="p-2 hover:bg-gray-100 transition"
+                            className={`p-2 transition ${
+                              canIncrease ? 'hover:bg-gray-100' : 'opacity-40 cursor-not-allowed'
+                            }`}
                             aria-label="Aumentar cantidad"
+                            disabled={!canIncrease}
                           >
                             <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
@@ -96,7 +101,8 @@ export function CartDrawer({
                       </div>
                     </div>
                   </div>
-                ))}
+                    );
+                })}
               </div>
             </div>
             
