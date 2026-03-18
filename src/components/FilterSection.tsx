@@ -74,7 +74,7 @@ export function FilterSection({
   return (
     <div className="bg-gray-50 border-y border-gray-200 py-8 md:py-10">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-6">
+        <div className="flex flex-col gap-6">
           {/* Category Filter */}
           <div className="w-full">
             <label className="block mb-3 text-xs tracking-widest uppercase">Categoría</label>
