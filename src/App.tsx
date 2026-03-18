@@ -8,11 +8,13 @@ import { Button } from './components/ui/button';
 import { products } from './data/products';
 import { Product, CartItem } from './types/product';
 import { clampQuantity, getMaxAllowedForCartLine, getQuantityInCartForVariant, getStockForSize } from './utils/stock';
+import { ArrowDown, FilterIcon } from 'lucide-react';
 
 export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 400]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -22,7 +24,7 @@ export default function App() {
   // Products without filters for New and Sale sections
   const newProducts = products.filter((p) => p.isNew);
   const saleProducts = products.filter((p) => p.isOnSale);
-  
+
   // Filter products only for "All Products" section
   const filteredProducts = products.filter((product) => {
     const categoryMatch = selectedCategory === 'all' || product.category === selectedCategory;
@@ -100,7 +102,7 @@ export default function App() {
   const handleCheckout = () => {
     const message = encodeURIComponent(
       `Hola! Me gustaría realizar el siguiente pedido:\n\n` +
-      cartItems.map((item, i) => 
+      cartItems.map((item, i) =>
         `${i + 1}. ${item.product.name}\n` +
         `   Talla: ${item.selectedSize}\n` +
         `   Cantidad: ${item.quantity}\n` +
@@ -108,7 +110,7 @@ export default function App() {
       ).join('\n') +
       `\nTotal: S/ ${cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}`
     );
-    
+
     window.open(`https://wa.me/51993133662?text=${message}`, '_blank');
   };
 
@@ -121,8 +123,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header 
-        cartCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)} 
+      <Header
+        cartCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
         onCartClick={() => setIsCartOpen(true)}
       />
 
@@ -184,18 +186,6 @@ export default function App() {
         </section>
       )}
 
-      {/* Filter Section Before All Products */}
-      <FilterSection
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        priceRange={priceRange}
-        onPriceRangeChange={setPriceRange}
-        selectedColors={selectedColors}
-        onColorChange={setSelectedColors}
-        selectedSizes={selectedSizes}
-        onSizeChange={setSelectedSizes}
-        onClearFilters={handleClearFilters}
-      />
 
       {/* All Products Section */}
       <section className="py-10 sm:py-12 md:py-16">
@@ -203,28 +193,57 @@ export default function App() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl mb-6 sm:mb-8 tracking-wider">
             TODOS LOS PRODUCTOS
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-            {allProductsSection.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onClick={setSelectedProduct}
-              />
-            ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+            {/* Filter Section Before All Products */}
+            <div className="flex flex-col">
+              <Button 
+              onClick={() => setIsFiltersOpen(prev => !prev)}
+              > Filtros <FilterIcon /></Button>
+
+              {isFiltersOpen &&
+                <FilterSection
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  priceRange={priceRange}
+                  onPriceRangeChange={setPriceRange}
+                  selectedColors={selectedColors}
+                  onColorChange={setSelectedColors}
+                  selectedSizes={selectedSizes}
+                  onSizeChange={setSelectedSizes}
+                  onClearFilters={handleClearFilters}
+                />}
+            </div>
+
+
+            <div className="col-span-3 sm:col-span-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+              {allProductsSection.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onClick={setSelectedProduct}
+                />
+              ))}
+            </div>
+
+
           </div>
-          
+
+
+
           {displayedProducts < filteredProducts.length && (
             <div className="text-center mt-6 sm:mt-8 text-sm sm:text-base text-gray-500">
               Cargando más productos...
             </div>
           )}
-          
+
           {displayedProducts >= filteredProducts.length && filteredProducts.length > 0 && (
             <div className="text-center mt-6 sm:mt-8 text-sm sm:text-base text-gray-500">
               Has visto todos los productos
             </div>
           )}
-          
+
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               <p className="text-base sm:text-lg mb-4">No se encontraron productos con estos filtros</p>
