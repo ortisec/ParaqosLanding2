@@ -5,13 +5,14 @@ import { ProductModal } from './components/ProductModal';
 import { FilterSection } from './components/FilterSection';
 import { CartDrawer } from './components/CartDrawer';
 import { Button } from './components/ui/button';
-import { products } from './data/products';
+import { products, refreshProducts } from './data/products';
 import { Product, CartItem } from './types/product';
 import { clampQuantity, getMaxAllowedForCartLine, getQuantityInCartForVariant, getStockForSize } from './utils/stock';
-import { ArrowDown, FilterIcon } from 'lucide-react';
+import { FilterIcon } from 'lucide-react';
 
 export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(products);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true)
@@ -21,12 +22,29 @@ export default function App() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [displayedProducts, setDisplayedProducts] = useState(10);
 
+  useEffect(() => {
+    let active = true;
+    refreshProducts(true)
+      .then((freshProducts) => {
+        if (!active) return;
+        setCatalogProducts([...freshProducts]);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCatalogProducts([...products]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Products without filters for New and Sale sections
-  const newProducts = products.filter((p) => p.isNew);
-  const saleProducts = products.filter((p) => p.isOnSale);
+  const newProducts = catalogProducts.filter((p) => p.isNew);
+  const saleProducts = catalogProducts.filter((p) => p.isOnSale);
 
   // Filter products only for "All Products" section
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = catalogProducts.filter((product) => {
     const categoryMatch = selectedCategory === 'all' || product.category === selectedCategory;
     const priceMatch = product.price >= priceRange[0] && product.price <= priceRange[1];
     const colorMatch = selectedColors.length === 0 || selectedColors.some(color => product.colors.includes(color));
@@ -164,12 +182,12 @@ export default function App() {
       )}
 
       {/* Sale Section */}
-      {saleProducts.length > 0 && (
-        <section className="py-10 sm:py-12 md:py-16 bg-gray-50 border-b border-gray-200">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl mb-6 sm:mb-8 tracking-wider">
-              OFERTAS ESPECIALES
-            </h2>
+      <section className="py-10 sm:py-12 md:py-16 bg-gray-50 border-b border-gray-200">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl mb-6 sm:mb-8 tracking-wider">
+            OFERTAS ESPECIALES
+          </h2>
+          {saleProducts.length > 0 ? (
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
               <div className="flex gap-3 sm:gap-4 md:gap-6 pb-2">
                 {saleProducts.map((product) => (
@@ -182,9 +200,11 @@ export default function App() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
-      )}
+          ) : (
+            <p className="text-gray-500">No hay productos en oferta en este momento.</p>
+          )}
+        </div>
+      </section>
 
 
       {/* All Products Section */}

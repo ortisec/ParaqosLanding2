@@ -356,7 +356,16 @@ function findListEndpoint(tag: string): string | null {
   return null;
 }
 
-type ApiProducto = { nombre: string; descripcion?: string | null; precio: string; precio_oferta?: string | null; es_oferta?: boolean | null; estado?: boolean | null; marca_id: number; id_producto: number; };
+type ApiProducto = {
+  nombre: string;
+  descripcion?: string | null;
+  precio: string;
+  precio_oferta?: string | null;
+  es_oferta?: boolean | number | string | null;
+  estado?: boolean | null;
+  marca_id: number;
+  id_producto: number;
+};
 type ApiVariante = {
   producto_id: number;
   stock?: number | null;
@@ -367,6 +376,13 @@ type ApiVariante = {
 };
 
 function transform(productsApi: ApiProducto[], variantesApi: ApiVariante[]): Product[] {
+  const asBoolean = (value: unknown): boolean => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') return value.trim().toLowerCase() === 'true' || value.trim() === '1';
+    return false;
+  };
+
   const byProduct: Record<number, { colors: string[]; sizes: string[]; images: string[]; stockBySize: Record<string, number> }> = {};
   for (const v of variantesApi || []) {
     const agg = byProduct[v.producto_id] || { colors: [], sizes: [], images: [], stockBySize: {} };
@@ -382,9 +398,11 @@ function transform(productsApi: ApiProducto[], variantesApi: ApiVariante[]): Pro
   return (productsApi || []).map((p) => {
     const agg = byProduct[p.id_producto] || { colors: [], sizes: [], images: [], stockBySize: {} };
     const base = parseFloat(p.precio || '0') || 0;
-    const offer = p.es_oferta ? parseFloat(p.precio_oferta || '0') || base : undefined;
-    const isOnSale = !!p.es_oferta && offer !== undefined;
-    const price = isOnSale ? offer! : base;
+    const parsedOffer = parseFloat(p.precio_oferta || '0') || 0;
+    const hasOfferPrice = parsedOffer > 0;
+    const offerFlag = asBoolean(p.es_oferta);
+    const isOnSale = offerFlag || (hasOfferPrice && parsedOffer < base);
+    const price = isOnSale && hasOfferPrice ? parsedOffer : base;
     const originalPrice = isOnSale ? base : undefined;
     const images = agg.images.length ? agg.images : ['https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800'];
     const colors = agg.colors.length ? agg.colors : ['Negro'];
@@ -421,8 +439,8 @@ export async function refreshProducts(force = false): Promise<Product[]> {
   const prodPath = findListEndpoint('productos') || '/productos/';
   const varPath = findListEndpoint('variantes_productos') || '/variantes/';
   try {
-    const prodRes = await fetchJSON(`${API_BASE_URL}${prodPath}?page=1&page_size=50`);
-    const varRes = await fetchJSON(`${API_BASE_URL}${varPath}?page=1&page_size=200`);
+    const prodRes = await fetchJSON(`${API_BASE_URL}${prodPath}?page=1&page_size=500`);
+    const varRes = await fetchJSON(`${API_BASE_URL}${varPath}?page=1&page_size=1000`);
     const prodRaw = prodRes?.data;
     const varRaw = varRes?.data;
     const prodData = Array.isArray(prodRaw?.items) ? prodRaw.items : Array.isArray(prodRaw) ? prodRaw : null;
